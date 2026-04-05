@@ -1,3 +1,57 @@
+## START HERE (FOR COMPLETE BEGINNERS)
+
+If this is your first time running a Python project, follow these steps exactly.
+
+### A) Open PowerShell
+1. Press Windows key.
+2. Type PowerShell.
+3. Open Windows PowerShell.
+
+### B) Go to the project folder
+```powershell
+cd "C:\Users\Naman Sinha\Desktop\quant_matrix_cli"
+```
+
+### C) Create and activate a virtual environment (first time only)
+```powershell
+py -m venv .venv
+.\.venv\Scripts\Activate
+```
+
+After activation, you should see (.venv) at the start of the terminal line.
+
+### D) Install required packages
+```powershell
+py -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+### E) Run once and verify it works
+```powershell
+py main.py --build
+```
+
+If this works, your setup is correct.
+
+### F) Optional: Run live dashboard mode (2 terminals)
+Terminal 1:
+```powershell
+cd "C:\Users\Naman Sinha\Desktop\quant_matrix_cli"
+.\.venv\Scripts\Activate
+py main.py --serve-live --interval 5 --host 127.0.0.1 --port 8765
+```
+
+Terminal 2:
+```powershell
+cd "C:\Users\Naman Sinha\Desktop\quant_matrix_cli"
+.\.venv\Scripts\Activate
+py main.py --live --ws-url ws://127.0.0.1:8765
+```
+
+If you get an error, copy the full error text and share it.
+
+---
+
 # Quick Start: How to Run
 
 > **Important**: To run the live application, you **must use two separate terminal windows**.
@@ -33,6 +87,92 @@ If you just want to run the pipeline once and generate the CSV/PNG artifacts:
 cd "C:\Users\Naman Sinha\Desktop\quant_matrix_cli"
 py main.py --build
 ```
+
+### Experimental: Provider Websocket -> Redis Streams (TYPE1)
+This starts realtime ingestion from Twelve Data or Polygon websocket feeds, aggregates ticks into 1-minute OHLCV bars, converts prices to fixed-point integers (x10^9), and writes to dual Redis streams (60-minute and 500-minute hot windows).
+
+1) Set feature flag and Redis location:
+```powershell
+set QM_ENABLE_LIVE_INGEST=1
+set QM_REDIS_HOST=127.0.0.1
+set QM_REDIS_PORT=6379
+```
+
+Optional sink override (default is Redis):
+```powershell
+set QM_BAR_SINK=zeromq
+set QM_ZMQ_ENDPOINT=tcp://127.0.0.1:5555
+```
+
+2) Set one provider key and choose provider:
+```powershell
+set QM_LIVE_PROVIDER=twelvedata
+set TWELVEDATA_API_KEY=your_key_here
+```
+or
+```powershell
+set QM_LIVE_PROVIDER=polygon
+set POLYGON_API_KEY=your_key_here
+```
+
+3) Run ingestion:
+```powershell
+cd "C:\Users\Naman Sinha\Desktop\quant_matrix_cli"
+py main.py --ingest-live
+```
+
+Optional provider override at runtime:
+```powershell
+py main.py --ingest-live --provider polygon
+```
+
+Background hourly janitor controls while ingest is running:
+```powershell
+set QM_ENABLE_HOURLY_JANITOR=1
+set QM_JANITOR_INTERVAL_SECONDS=3600
+set QM_JANITOR_LOOKBACK_HOURS=2
+set QM_TYPE2_PARQUET_ROOT=outputs/live/parquet
+```
+
+Latency alert threshold (milliseconds for Redis write stage):
+```powershell
+set QM_LIVE_LATENCY_ALERT_MS=100
+```
+
+### Build One-shot Rolling Snapshot From Redis (TYPE1 -> Analytics)
+This reads the 500-minute Redis hot stream and computes vectorized log returns, rolling z-scores, and PCA explained variance in one shot.
+
+```powershell
+cd "C:\Users\Naman Sinha\Desktop\quant_matrix_cli"
+py main.py --snapshot-live --lookback-minutes 500 --z-window 60 --pca-components 3
+```
+
+Outputs are written under `outputs/latest/live/`.
+Includes `live_latest_residual_zscore.csv` for residual-first signal checks.
+
+### Hourly Janitor: Redis Streams -> Parquet
+This persists recent 1-minute bars from the 500-minute hot stream into hourly parquet partitions with idempotent deduping by (`symbol`, `bar_end`).
+
+```powershell
+cd "C:\Users\Naman Sinha\Desktop\quant_matrix_cli"
+py main.py --persist-live-hourly --persist-hours 1
+```
+
+Parquet files are written under `outputs/live/parquet/date=YYYY-MM-DD/hour=HH/bars.parquet`.
+
+### Provider Bake-off (Reliability Search)
+Runs both providers sequentially and writes a scored report to `outputs/live/provider_bakeoff_*.json`.
+
+```powershell
+cd "C:\Users\Naman Sinha\Desktop\quant_matrix_cli"
+py main.py --bakeoff-live --bakeoff-seconds 300
+```
+
+Failover artifacts during heartbeat outages:
+- `outputs/live/freeze.flag` (execution freeze marker)
+- `outputs/live/gaps.jsonl` (gap and timeout event log)
+
+On heartbeat timeout, the service attempts TYPE2 parquet backfill for missing bars before reconnecting.
 
 ---
 
@@ -71,6 +211,9 @@ python -m venv .venv
 .\\.venv\\Scripts\\Activate
 python -m pip install --upgrade pip
 pip install pandas numpy scipy scikit-learn seaborn matplotlib yfinance
+pip install websockets redis
+pip install pyarrow
+pip install pyzmq
 ```
 
 > Alternatively, once you add a `requirements.txt`, replace the last command with `pip install -r requirements.txt`.

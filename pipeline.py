@@ -6,9 +6,11 @@ from pathlib import Path
 
 import pandas as pd
 
-from config import ALL_TICKERS, PRIMARY_TICKERS, RESERVE_BENCH
+from config import ALL_TICKERS, PRIMARY_TICKERS, RESERVE_BENCH, LiveIngestConfig
 from data_cleaner import CleaningResult, clean_and_replace_zombies
 from data_fetcher import fetch_adj_close_prices
+from live_ingest.snapshot import LiveSnapshotArtifacts, build_live_snapshot_from_redis
+from live_persistence import HourlyPersistenceResult, HourlyParquetJanitor
 from matrix_math import build_aligned_log_return_matrix
 from standardizer import StandardizationResult, standardize_and_plot_heatmap
 
@@ -114,4 +116,31 @@ def build_and_serialize(
             "standardized_csv_archive": standardized_csv_archive,
         },
     )
+
+
+def build_live_snapshot(
+    *,
+    live_cfg: LiveIngestConfig,
+    root_dir: Path,
+    lookback_minutes: int = 500,
+    z_window: int = 60,
+    pca_components: int = 3,
+) -> LiveSnapshotArtifacts:
+    return build_live_snapshot_from_redis(
+        cfg=live_cfg,
+        root_dir=root_dir,
+        lookback_minutes=lookback_minutes,
+        z_window=z_window,
+        pca_components=pca_components,
+    )
+
+
+def persist_live_hourly(
+    *,
+    live_cfg: LiveIngestConfig,
+    root_dir: Path,
+    hours: int = 1,
+) -> HourlyPersistenceResult:
+    janitor = HourlyParquetJanitor(cfg=live_cfg, root_dir=root_dir)
+    return janitor.persist_recent(hours=hours)
 
