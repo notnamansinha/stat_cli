@@ -6,23 +6,37 @@ A highly structured, production-ready market data pipeline for **30 NASDAQ-100 U
 
 ## ⚡ Quick Start 
 
-The software has been heavily optimized so you don't need to learn a complex CLI or pass 10 different flags to just build your data. 
+The software has been heavily optimized so you don't need to learn a complex CLI or pass 10 different flags just to build your data. 
 
-**Run these 3 commands:**
+**Run these 3 steps:**
 
-```powershell
-# 1. Setup your environment (first time only)
-cd "C:\Users\Naman Sinha\Desktop\quant_matrix_cli"
-py -m venv .venv && .\.venv\Scripts\Activate && pip install -r requirements.txt
+**1. Setup your environment (first time only)**
+```bash
+git clone https://github.com/sunsetnightshade/stat_cli.git
+cd stat_cli
 
-# 2. Build the matrix (Fetches data, formats, standardizes, creates heatmaps)
-py main.py
+# Create a virtual environment
+python -m venv .venv
 
-# 3. Open the visual dashboard
-py -m streamlit run app.py
+# Activate it (Windows):
+.venv\Scripts\activate
+# OR Activate it (Linux/Mac):
+source .venv/bin/activate
+
+pip install -r requirements.txt
 ```
 
-That's it! If you ran `py main.py`, your fresh heatmaps and CSVs immediately appear in the **`outputs/latest/`** folder. 
+**2. Build the matrix (Fetches data, formats, standardizes, creates heatmaps)**
+```bash
+python main.py
+```
+
+**3. Open the visual dashboard**
+```bash
+python -m streamlit run app.py
+```
+
+That's it! If you ran `python main.py`, your fresh heatmaps and CSVs immediately appear in the **`outputs/latest/`** folder. 
 
 ---
 
